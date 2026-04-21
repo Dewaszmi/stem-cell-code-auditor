@@ -32,6 +32,13 @@ def list_directory_structure(repo_path: str):
 
 
 @tool
+def read_file_content(file_path: str):
+    """Reads the actual code within a specific file."""
+    with open(file_path, "r") as f:
+        return f.read()
+
+
+@tool
 def install_and_develop_tool(package_name: str, tool_name: str, command_template: str):
     """
     Installs a python package and creates a new tool for the agent.
@@ -48,6 +55,7 @@ def install_and_develop_tool(package_name: str, tool_name: str, command_template
             return result.stdout if result.returncode == 0 else result.stderr
 
         # 3. Add to our internal registry
+        dynamic_tool.__doc__ = f"Executes {tool_name} using {package_name} on the specified path."
         DEVELOPED_TOOLS[tool_name] = dynamic_tool
 
         return f"Successfully evolved! I now have the tool: {tool_name}"

@@ -5,7 +5,10 @@ from stem_cell_coding_agent.agent.state import StemState
 from stem_cell_coding_agent.agent.tools import (
     install_and_develop_tool,
     list_directory_structure,
+    read_file_content,
 )
+
+from . import DEVELOPED_TOOLS
 
 
 def sensing_phase(state: StemState):
@@ -76,4 +79,62 @@ def evolution_phase(state: StemState):
     response = llm.bind_tools([install_and_develop_tool]).invoke(
         [SystemMessage(content=prompt)] + state["messages"]
     )
+    return {"messages": [response]}
+
+
+def generalist_audit_phase(state: StemState):
+    """The untrained agent exploring and auditing."""
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+
+    prompt = f"""
+    You are a General Code Auditor. 
+    Target Repository: {state['repo_name']}
+    
+    Your task:
+    1. Use 'list_directory_structure' to see what's in the repo.
+    2. Use 'read_file_content' to read files that look suspicious or important.
+    3. If you have gathered enough information, summarize your findings.
+    
+    If you are done exploring, respond with a final list of issues formatted as:
+    ISSUES DETECTED:
+    - [Issue 1]
+    - [Issue 2]
+    ...
+    TOTAL ISSUE COUNT: [X]
+    """
+
+    # Bind only the basic vision tools
+    tools = [list_directory_structure, read_file_content]
+    response = llm.bind_tools(tools).invoke([SystemMessage(content=prompt)] + state["messages"])
+
+    return {"messages": [response]}
+
+
+def specialized_audit_phase(state: StemState):
+    """The evolved agent auditing with custom tools."""
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+
+    prompt = f"""
+    You are a fully evolved {state['specialization']}.
+    Target Repository: {state['repo_name']}
+    
+    Your task:
+    1. You have your basic sight ('list_directory_structure', 'read_file_content').
+    2. MORE IMPORTANTLY: You must use the tools you installed during your evolution phase to audit the code.
+    3. Combine your manual reading with your specialized tool outputs.
+    
+    If you are done auditing, respond with a final list of issues formatted as:
+    ISSUES DETECTED:
+    - [Issue 1]
+    - [Issue 2]
+    ...
+    TOTAL ISSUE COUNT: [X]
+    """
+
+    # Bind basic tools PLUS the dynamically developed tools
+    dynamic_tools = list(DEVELOPED_TOOLS.values())
+    all_tools = [list_directory_structure, read_file_content] + dynamic_tools
+
+    response = llm.bind_tools(all_tools).invoke([SystemMessage(content=prompt)] + state["messages"])
+
     return {"messages": [response]}
