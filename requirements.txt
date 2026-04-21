@@ -1,3 +1,5 @@
-gitpython
 langchain
 langchain-openai
+langgraph
+gitpython
+dotenv

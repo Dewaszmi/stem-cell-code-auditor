@@ -6,6 +6,7 @@ from stem_cell_coding_agent.config import REPOS_DIR
 
 
 def clone_repo(repo_url="https://github.com/Dewaszmi/carjacker"):
+    """Clones the repository if not exists, returns path to the repository."""
     repo_name = repo_url.rsplit("/", 1)[1]
     repo_path = f"{REPOS_DIR}/{repo_name}"
     if not os.path.exists(repo_path):
