@@ -4,6 +4,8 @@ RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+ENV PYTHONPATH="/app/src"
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -11,4 +13,4 @@ RUN mkdir -p /app/repos
 
 COPY . .
 
-CMD ["python", "src/stem_cell_coding_agent/main.py"]
+CMD ["python", "-m", "stem_cell_coding_agent.main"]
