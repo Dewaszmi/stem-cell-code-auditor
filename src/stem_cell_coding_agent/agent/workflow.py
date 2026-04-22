@@ -22,7 +22,6 @@ def run_generalist_agent(repo_path: str):
 
     # Nodes
     workflow.add_node("audit", generalist_audit_phase)
-    # The ToolNode acts as the hands for the generalist
     workflow.add_node("tools", ToolNode([list_directory_structure, read_file_content]))
 
     # Edges
@@ -47,37 +46,41 @@ def run_generalist_agent(repo_path: str):
 def run_stem_agent(repo_path):
     workflow = StateGraph(StemState)
 
-    # Nodes
-    workflow.add_node("sense_environment", sensing_phase)
+    # 1. Add Nodes
+    workflow.add_node("sensing_node", sensing_phase)  # Renamed for clarity
+    workflow.add_node("base_tools", ToolNode([list_directory_structure, read_file_content]))
     workflow.add_node("evolution_phase", evolution_phase)
     workflow.add_node("execute_evolution_tools", ToolNode([install_and_develop_tool]))
     workflow.add_node("audit_phase", specialized_audit_phase)
 
-    def dynamic_tool_node(state: StemState):
+    def audit_tool_node(state: StemState):
         current_tools = [list_directory_structure, read_file_content] + list(DEVELOPED_TOOLS.values())
-        node = ToolNode(current_tools)
-        return node.invoke(state)
+        return ToolNode(current_tools).invoke(state)
 
-    workflow.add_node("audit_tools", dynamic_tool_node)
+    workflow.add_node("audit_tools", audit_tool_node)
 
-    workflow.set_entry_point("sense_environment")
+    # 2. Set Entry Point (Matches node name above)
+    workflow.set_entry_point("sensing_node")
 
-    # Edges
-    workflow.add_edge("sense_environment", "evolution_phase")
+    # 3. Define the Edges
+    # Sensing Loop: Loop to tools, or proceed to evolution when text is returned
+    workflow.add_conditional_edges(
+        "sensing_node",
+        tools_condition,
+        {"tools": "base_tools", END: "evolution_phase"},  # When tools_condition says END, go to evolution
+    )
+    workflow.add_edge("base_tools", "sensing_node")
 
-    # Evolution loop
+    # Evolution Loop
     workflow.add_conditional_edges(
         "evolution_phase",
         tools_condition,
         {"tools": "execute_evolution_tools", END: "audit_phase"},
     )
-
     workflow.add_edge("execute_evolution_tools", "evolution_phase")
 
-    # Audit loop
-    workflow.add_conditional_edges(
-        "audit_phase", tools_condition, {"tools": "audit_tools", END: END}  # When done auditing, finish
-    )
+    # Audit Loop
+    workflow.add_conditional_edges("audit_phase", tools_condition, {"tools": "audit_tools", END: END})
     workflow.add_edge("audit_tools", "audit_phase")
 
     app = workflow.compile()
