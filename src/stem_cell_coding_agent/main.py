@@ -8,15 +8,21 @@ from stem_cell_coding_agent.utils import is_docker
 
 
 def main():
-    load_dotenv()
-
     if not is_docker():
         print(
             "It's possible that program isn't being ran in a Docker container, the program will now exit for the sake of system safety."
         )
-        sys.exit()
+        sys.exit(1)
 
-    repo_path = clone_repo()
+    if len(sys.argv) < 2:
+        print("No repository has been provided via the CLI arguments, exiting.")
+        sys.exit(1)
+
+    repo_path = sys.argv[1]
+
+    load_dotenv()
+
+    repo_path = clone_repo(repo_url=repo_path)
     gen_final = run_generalist_agent(repo_path)
     stem_final = run_stem_agent(repo_path)
 

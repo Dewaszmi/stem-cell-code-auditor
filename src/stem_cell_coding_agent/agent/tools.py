@@ -29,29 +29,38 @@ def list_directory_structure(repo_path: str):
 @tool
 def read_file_content(repo_name: str, file_path: str):
     """Reads a file. file_path should be relative to the repo root."""
-    # 1. Path Cleanup: If the agent includes the repo name in the path, strip it.
-    clean_path = file_path.replace(f"{repo_name}/", "", 1)
 
-    base_path = os.path.join("repos", repo_name)
-    full_path = os.path.abspath(os.path.join(base_path, clean_path))
+    # 1. THE FIX: Clean the path
+    # Remove leading slashes
+    clean_path = file_path.lstrip("/")
 
-    # 2. Safety: Ensure it stays inside /repos
+    # Remove the repo name if the agent accidentally doubled it up
+    # (e.g., 'carjacker/src/main.py' -> 'src/main.py')
+    if clean_path.startswith(f"{repo_name}/"):
+        clean_path = clean_path[len(repo_name) + 1 :]
+
+    # Remove absolute path prefixes if the agent is trying to be too helpful
+    clean_path = clean_path.replace("app/repos/", "").replace("repos/", "")
+    if clean_path.startswith(f"{repo_name}/"):  # Check again after prefix strip
+        clean_path = clean_path[len(repo_name) + 1 :]
+
+    # 2. Construct absolute path
+    base_path = os.path.join(os.getcwd(), "repos", repo_name)
+    full_path = os.path.normpath(os.path.join(base_path, clean_path))
+
+    # 3. Security: Prevent directory traversal
     if not full_path.startswith(os.path.abspath("repos")):
-        return "ERROR: Access denied. Stay inside the repository."
+        return f"ERROR: Access Denied. {full_path} is outside allowed directory."
 
-    # 3. Graceful Failure: Try/Except to prevent graph crashes
     try:
         if not os.path.exists(full_path):
-            return f"ERROR: File '{file_path}' not found. Check the directory structure and try again."
+            # If it fails, let's give the agent a hint so it can correct itself
+            return f"ERROR: File not found at {clean_path}. Please check 'list_directory_structure' for the exact relative path."
 
         with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
-            # 4. Context Protection: Only read the first 10k characters
-            content = f.read(10000)
-            if len(content) == 10000:
-                content += "\n... [File Truncated for Brevity] ..."
-            return content
+            return f.read(15000)  # Increased to 15k for better context
     except Exception as e:
-        return f"ERROR: Could not read file: {str(e)}"
+        return f"ERROR: {str(e)}"
 
 
 @tool
