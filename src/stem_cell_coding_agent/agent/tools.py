@@ -1,6 +1,5 @@
 import os
 import subprocess
-import sys
 
 from langchain_core.tools import tool
 
@@ -64,27 +63,43 @@ def read_file_content(repo_name: str, file_path: str):
 
 
 @tool
-def install_and_develop_tool(package_name: str, tool_name: str, command_template: str):
+def install_and_develop_tool(setup_command: str, tool_name: str, execution_command: str):
     """
-    Installs a python package and creates a new tool for the agent.
-    IMPORTANT: The command_template must use '{path}' as the placeholder for the file or directory.
-    Example: command_template='bandit -r {path}'
+    Evolves the agent by installing ANY system package or running setup scripts,
+    then defining a command to use the new capability.
+
+    Args:
+        setup_command: The bash command to install the tool (e.g., 'apt-get update && apt-get install -y cppcheck')
+        tool_name: A simple name for this new capability.
+        execution_command: The command to run the tool, using '{path}' as the target placeholder.
+                           Example: 'cppcheck {path}' or 'grep -r "TODO" {path}'
     """
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+        # 1. Execute setup (apt-get, pip, curl, etc.)
+        # Using shell=True allows pipes and complex install strings
+        install_proc = subprocess.run(setup_command, shell=True, capture_output=True, text=True)
 
+        if install_proc.returncode != 0:
+            return f"Evolution Error during setup: {install_proc.stderr}"
+
+        # 2. Define the dynamic execution logic
         def dynamic_tool(target_path: str):
-            # Using .replace is "Defensive Programming"
-            # It ignores {url} or other keys that would cause a KeyError
-            cmd_string = command_template.replace("{path}", target_path)
+            # Resolve placeholders
+            cmd_string = execution_command.replace("{path}", target_path)
 
-            # Security: Basic check to ensure the agent isn't trying to escape the shell
-            result = subprocess.run(cmd_string.split(), capture_output=True, text=True)
-            return result.stdout if result.returncode == 0 else result.stderr
+            # Execute the newly installed tool
+            result = subprocess.run(cmd_string, shell=True, capture_output=True, text=True)
 
-        dynamic_tool.__doc__ = f"Executes {tool_name} using {package_name} on the specified path."
+            output = result.stdout if result.returncode == 0 else result.stderr
+            return output if output else "Tool executed successfully but returned no output."
+
+        # 3. Register the new 'organ'
+        dynamic_tool.__doc__ = (
+            f"Specialized tool '{tool_name}' created via evolution. Command: {execution_command}"
+        )
         DEVELOPED_TOOLS[tool_name] = dynamic_tool
 
-        return f"Successfully evolved! I now have the tool: {tool_name}. Note: I can only execute this on local paths."
+        return f"Successfully evolved! New capability '{tool_name}' is now online."
+
     except Exception as e:
         return f"Evolution failed: {str(e)}"

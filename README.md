@@ -9,7 +9,7 @@ upon detecting CSS/HTML -> UI/UX Performance Optimizer
 ## Setup
 ```bash
 docker build -t stem-cell-code-auditor
-docker run -it -e OPENAI_API_KEY=#YOUR_OPENAI_API_KEY -v "$(pwd)/repos:/app/repos" stem-cell-code-auditor
+docker run -it -e OPENAI_API_KEY=[YOUR_OPENAI_API_KEY] -v "$(pwd)/repos:/app/repos" stem-cell-code-auditor [REPOSITORY_URL]
 ```
 
 ## Tech stack

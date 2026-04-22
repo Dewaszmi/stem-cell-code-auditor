@@ -18,13 +18,19 @@ def sensing_phase(state: StemState):
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
     prompt = f"""
-    You are a General Code Auditor that wants to evolve. 
+    You are a General Code Auditor that's going to specialize in a more niche branch of code auditioning. 
     Target Repository: {state['repo_name']}
     
-    1. Explore the codebase using tools.
+    1. Explore the codebase using given tools.
     2. Once you know what you want to become, you MUST respond exactly in this format:
        SPECIALIZATION: [Your Choice]
        REASONING: [Your Rationale]
+       
+    For example:
+    Upon detecting substantial amount of backend code, APIs, SQL, sensitive logic - you might want to specialize into a "Security Hardener", focusing on OWASP Top 10, SQL Injection, Auth logic
+    Upon detecting substantial amount of frontend code, CSS/TSX, React/Vue - you might want to specialize into a "UX/Performance Optimizer", focusing on accessibility, bundle size, rendering bottlenecks.
+    
+    Based on the specialisation deemed appropriate, you will install additional tools to help you with precise auditioning in the next phases.
     """
 
     tools = [list_directory_structure, read_file_content]
@@ -58,17 +64,25 @@ def evolution_phase(state: StemState):
         # If we have successful installations in history, change the prompt
         # to force the agent to finish rather than repeat.
         prompt = f"""
-        You have successfully installed the tools for your specialization ({state['specialization']}).
-        Look at your message history to see what was installed.
-        DO NOT call 'install_and_develop_tool' again for the same tools.
-        If deemed necessary, you can install another tool. If you think you are ready, confirm by listing your new tools and say exactly "TOOL INSTALLATION COMPLETE"
+        You have successfully installed tools. Now you must decide if you need MORE 
+        or if you are ready. If ready, summarize newly acquired tools and say "TOOL INSTALLATION COMPLETE".
         """
     else:
         # Initial installation prompt
         prompt = f"""
-        You are now a {state['specialization']}. 
-        Based on your reasoning: {state['reasoning']}, what code audition tools do you need?
-        Call the 'install_and_develop_tool' to get them.
+        You are a {state['specialization']}. You are in a Debian-based Linux environment.
+        You have root access to install any tools necessary for your audit.
+        
+        If you need a tool, you can use apt-get, pip, curl etc.
+        Define the execution command using '{{path}}' as the target.
+        
+        It is mandatory to install at least one professional-grade CLI tool (eg. bandit, semgrep, safety, system-level scanners, all depending on specialization type).
+        It is also highly recommended to install more than one tools deemed useful. Be ambitious.
+        
+        TIP: If you need multiple system tools (like semgrep and lynis), 
+        install them in a SINGLE 'install_and_develop_tool' call to avoid 
+        system package locks.
+        Example setup_command: 'apt-get update && apt-get install -y semgrep lynis'
         """
 
     # We still bind the tools because the LLM might decide it needs ONE more
@@ -76,6 +90,11 @@ def evolution_phase(state: StemState):
     response = llm.bind_tools([install_and_develop_tool]).invoke(
         [SystemMessage(content=prompt)] + state["messages"]
     )
+    print(f"DEBUG: Evolution decision: {response.content}")
+
+    if response.tool_calls:
+        print(f"DEBUG: Agent is installing: {response.tool_calls[0]['args']}")
+
     return {"messages": [response]}
 
 
