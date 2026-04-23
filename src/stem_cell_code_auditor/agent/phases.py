@@ -1,16 +1,11 @@
 import re
 
-from langchain_core.messages import SystemMessage, trim_messages
+from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 
-from stem_cell_coding_agent.agent.state import StemState
-from stem_cell_coding_agent.agent.tools import (
-    install_and_develop_tool,
-    list_directory_structure,
-    read_file_content,
-)
-
 from . import DEVELOPED_TOOLS
+from .state import StemState
+from .tools import install_and_develop_tool, list_directory_structure, read_file_content
 
 
 def sensing_phase(state: StemState):
@@ -34,11 +29,9 @@ def sensing_phase(state: StemState):
     """
 
     tools = [list_directory_structure, read_file_content]
-    # We use trimmed messages to avoid Context Overflow
     response = llm.bind_tools(tools).invoke([SystemMessage(content=prompt)] + state["messages"])
 
-    # --- CRITICAL: Only parse if NOT calling a tool ---
-    # If the agent is calling a tool, we return the message so the graph can route to tools.
+    # Parse only if agent is not calling a tool
     if not response.tool_calls:
         try:
             content = response.content
@@ -52,17 +45,16 @@ def sensing_phase(state: StemState):
 
 
 def evolution_phase(state: StemState):
-    """The agent decides which tools to 'grow' or acknowledges their existence."""
+    """The agent decides which tools to develop or acknowledges their existence."""
     llm = ChatOpenAI(model="gpt-4o")
 
-    # 1. Check if we've already tried to install something
+    # Check if the agent already tried to install something
     has_installed_tools = any(
         "Successfully evolved" in m.content for m in state["messages"] if hasattr(m, "content")
     )
 
     if has_installed_tools:
-        # If we have successful installations in history, change the prompt
-        # to force the agent to finish rather than repeat.
+        # Prompt after installing at least one tool
         prompt = f"""
         You have successfully installed tools. Now you must decide if you need MORE 
         or if you are ready. If ready, summarize newly acquired tools and say "TOOL INSTALLATION COMPLETE".
@@ -99,7 +91,7 @@ def evolution_phase(state: StemState):
 
 
 def generalist_audit_phase(state: StemState):
-    """The untrained agent exploring and auditing."""
+    """The generalist agent exploring and auditing."""
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
     prompt = f"""
@@ -126,7 +118,7 @@ def generalist_audit_phase(state: StemState):
 
 
 def specialized_audit_phase(state: StemState):
-    """The evolved agent auditing with custom tools."""
+    """The specialized agent auditing with custom tools."""
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
     prompt = f"""

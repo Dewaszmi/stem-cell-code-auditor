@@ -13,4 +13,4 @@ RUN mkdir -p /app/repos
 
 COPY . .
 
-ENTRYPOINT ["python", "-m", "stem_cell_coding_agent.main"]
+ENTRYPOINT ["python", "-m", "stem_cell_code_auditor.main"]

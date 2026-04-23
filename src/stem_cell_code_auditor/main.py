@@ -2,9 +2,8 @@ import sys
 
 from dotenv import load_dotenv
 
-from stem_cell_coding_agent.agent.workflow import run_generalist_agent, run_stem_agent
-from stem_cell_coding_agent.git_tools import clone_repo
-from stem_cell_coding_agent.utils import is_docker
+from stem_cell_code_auditor.agent import run_generalist_agent, run_stem_agent
+from stem_cell_code_auditor.utils import clone_repo, is_docker
 
 
 def main():

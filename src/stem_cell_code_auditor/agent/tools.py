@@ -28,36 +28,26 @@ def list_directory_structure(repo_path: str):
 @tool
 def read_file_content(repo_name: str, file_path: str):
     """Reads a file. file_path should be relative to the repo root."""
-
-    # 1. THE FIX: Clean the path
-    # Remove leading slashes
     clean_path = file_path.lstrip("/")
-
-    # Remove the repo name if the agent accidentally doubled it up
-    # (e.g., 'carjacker/src/main.py' -> 'src/main.py')
     if clean_path.startswith(f"{repo_name}/"):
         clean_path = clean_path[len(repo_name) + 1 :]
 
-    # Remove absolute path prefixes if the agent is trying to be too helpful
     clean_path = clean_path.replace("app/repos/", "").replace("repos/", "")
-    if clean_path.startswith(f"{repo_name}/"):  # Check again after prefix strip
+    if clean_path.startswith(f"{repo_name}/"):
         clean_path = clean_path[len(repo_name) + 1 :]
 
-    # 2. Construct absolute path
     base_path = os.path.join(os.getcwd(), "repos", repo_name)
     full_path = os.path.normpath(os.path.join(base_path, clean_path))
 
-    # 3. Security: Prevent directory traversal
     if not full_path.startswith(os.path.abspath("repos")):
         return f"ERROR: Access Denied. {full_path} is outside allowed directory."
 
     try:
         if not os.path.exists(full_path):
-            # If it fails, let's give the agent a hint so it can correct itself
             return f"ERROR: File not found at {clean_path}. Please check 'list_directory_structure' for the exact relative path."
 
         with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
-            return f.read(15000)  # Increased to 15k for better context
+            return f.read(15000)
     except Exception as e:
         return f"ERROR: {str(e)}"
 
@@ -93,13 +83,10 @@ def install_and_develop_tool(setup_command: str, tool_name: str, execution_comma
             output = result.stdout if result.returncode == 0 else result.stderr
             return output if output else "Tool executed successfully but returned no output."
 
-        # 3. Register the new 'organ'
-        dynamic_tool.__doc__ = (
-            f"Specialized tool '{tool_name}' created via evolution. Command: {execution_command}"
-        )
+        dynamic_tool.__doc__ = f"Specialized tool '{tool_name}' installed. Command: {execution_command}"
         DEVELOPED_TOOLS[tool_name] = dynamic_tool
 
-        return f"Successfully evolved! New capability '{tool_name}' is now online."
+        return f"Successfully added tool: '{tool_name}' to the available tool registry."
 
     except Exception as e:
-        return f"Evolution failed: {str(e)}"
+        return f"Tool installation failed: {str(e)}"

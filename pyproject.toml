@@ -3,11 +3,15 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "stem-cell-coding-agent"
+name = "stem-cell-code-auditor"
 version = "0.1.0"
-dependencies = ["gitpython", "langchain", "langchain-openai", "dotenv"]
+dependencies = [
+    "gitpython",
+    "langchain",
+    "langchain-openai",
+    "langgraph",
+    "dotenv",
+]
 
 [project.scripts]
-# "run-me" is the command you'll type in the terminal
-# "my_package.main:main" points to the main() function in main.py
-run-me = "stem_cell_coding_agent.main:main"
+run-me = "stem_cell_code_auditor.main:main"

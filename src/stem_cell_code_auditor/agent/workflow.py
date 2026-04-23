@@ -1,20 +1,15 @@
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from stem_cell_coding_agent.agent.phases import (
+from . import DEVELOPED_TOOLS
+from .phases import (
     evolution_phase,
     generalist_audit_phase,
     sensing_phase,
     specialized_audit_phase,
 )
-from stem_cell_coding_agent.agent.state import StemState
-from stem_cell_coding_agent.agent.tools import (
-    install_and_develop_tool,
-    list_directory_structure,
-    read_file_content,
-)
-
-from . import DEVELOPED_TOOLS
+from .state import StemState
+from .tools import install_and_develop_tool, list_directory_structure, read_file_content
 
 
 def run_generalist_agent(repo_path: str):
@@ -59,15 +54,13 @@ def run_stem_agent(repo_path):
 
     workflow.add_node("audit_tools", audit_tool_node)
 
-    # 2. Set Entry Point (Matches node name above)
     workflow.set_entry_point("sensing_node")
 
-    # 3. Define the Edges
     # Sensing Loop: Loop to tools, or proceed to evolution when text is returned
     workflow.add_conditional_edges(
         "sensing_node",
         tools_condition,
-        {"tools": "base_tools", END: "evolution_phase"},  # When tools_condition says END, go to evolution
+        {"tools": "base_tools", END: "evolution_phase"},
     )
     workflow.add_edge("base_tools", "sensing_node")
 
@@ -97,11 +90,9 @@ def run_stem_agent(repo_path):
 
     final_state = app.invoke(initial_state)
 
-    # --- UPDATED PRINT STATEMENTS ---
     print("\n--- STEM AGENT AUDIT COMPLETE ---")
     print(f"IDENTIFIED AS: {final_state['specialization']}")
     print(f"RATIONALE: {final_state['reasoning']}")
 
-    # Adding a newline before the report makes it easier to read in the terminal
     print(f"\nFINAL REPORT:\n{final_state['messages'][-1].content}")
     return final_state
