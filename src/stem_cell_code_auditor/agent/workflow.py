@@ -28,7 +28,7 @@ def run_generalist_agent(repo_path: str):
 
     app = workflow.compile()
 
-    print(f"🤖 Generalist Agent starting audit on: {repo_path}...")
+    print(f"Generalist Agent starting audit on: {repo_path}...")
     final_state = app.invoke(
         {"repo_name": repo_path, "messages": [], "specialization": "Generalist", "reasoning": "None"}
     )
@@ -50,7 +50,14 @@ def run_stem_agent(repo_path):
 
     def audit_tool_node(state: StemState):
         current_tools = [list_directory_structure, read_file_content] + list(DEVELOPED_TOOLS.values())
-        return ToolNode(current_tools).invoke(state)
+        result = ToolNode(current_tools).invoke(state)
+
+        print("\n--- TOOL EXECUTION LOG ---")
+        for msg in result["messages"]:
+            print(f"Tool Output: {msg.content[:500]}...")  # Print first 500 chars
+        print("--------------------------\n")
+
+        return result
 
     workflow.add_node("audit_tools", audit_tool_node)
 

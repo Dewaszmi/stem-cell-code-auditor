@@ -65,12 +65,32 @@ def install_and_develop_tool(setup_command: str, tool_name: str, execution_comma
                            Example: 'cppcheck {path}' or 'grep -r "TODO" {path}'
     """
     try:
-        # 1. Execute setup (apt-get, pip, curl, etc.)
-        # Using shell=True allows pipes and complex install strings
-        install_proc = subprocess.run(setup_command, shell=True, capture_output=True, text=True)
+        env = os.environ.copy()
+        env["DEBIAN_FRONTEND"] = "noninteractive"
+        env["PERL_MM_USE_DEFAULT"] = "1"
+        cleanup = "rm -f /var/lib/dpkg/lock* /var/lib/apt/lists/lock /var/cache/apt/archives/lock"
 
-        if install_proc.returncode != 0:
-            return f"Evolution Error during setup: {install_proc.stderr}"
+        full_command = f"{cleanup} && {setup_command}"
+        print(f"\n[RUNNING COMMAND]: {full_command}")
+
+        # Execute setup (apt-get, pip, curl, etc.)
+        # Using shell=True allows pipes and complex install strings
+        process = subprocess.run(
+            full_command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=300,  # 5 minute limit per installation
+        )
+
+        if process.stdout:
+            print(f"[STDOUT]:\n{process.stdout}")
+        if process.stderr:
+            print(f"[STDERR]:\n{process.stderr}")
+
+        if process.returncode != 0:
+            return f"Evolution Error during setup: {process.stderr}"
 
         # 2. Define the dynamic execution logic
         def dynamic_tool(target_path: str):
@@ -88,5 +108,7 @@ def install_and_develop_tool(setup_command: str, tool_name: str, execution_comma
 
         return f"Successfully added tool: '{tool_name}' to the available tool registry."
 
+    except subprocess.TimeoutExpired:
+        return "Evolution Error: Installation timed out. The tool might be too large or require interactive input."
     except Exception as e:
         return f"Tool installation failed: {str(e)}"

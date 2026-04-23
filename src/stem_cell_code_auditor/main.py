@@ -22,7 +22,7 @@ def main():
     load_dotenv()
 
     repo_path = clone_repo(repo_url=repo_path)
-    gen_final = run_generalist_agent(repo_path)
+    # gen_final = run_generalist_agent(repo_path)
     stem_final = run_stem_agent(repo_path)
 
     import re
@@ -32,7 +32,7 @@ def main():
         return match.group(1) if match else "Unknown"
 
     # After running both:
-    print(f"Generalist found: {get_count(gen_final['messages'][-1].content)}")
+    # print(f"Generalist found: {get_count(gen_final['messages'][-1].content)}")
     print(f"Stem Agent found: {get_count(stem_final['messages'][-1].content)}")
 
 

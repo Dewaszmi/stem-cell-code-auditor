@@ -8,4 +8,5 @@ class StemState(TypedDict):
     repo_name: str
     messages: Annotated[List[BaseMessage], operator.add]
     specialization: str
+    tech_stack: str
     reasoning: str
