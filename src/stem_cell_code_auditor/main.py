@@ -22,18 +22,18 @@ def main():
     load_dotenv()
 
     repo_path = clone_repo(repo_url=repo_path)
-    # gen_final = run_generalist_agent(repo_path)
-    stem_final = run_stem_agent(repo_path)
+    run_generalist_agent(repo_path)
+    run_stem_agent(repo_path)
 
-    import re
+    # import re
 
-    def get_count(message):
-        match = re.search(r"TOTAL ISSUE COUNT:\s*(\d+)", message)
-        return match.group(1) if match else "Unknown"
+    # def get_count(message):
+    #     match = re.search(r"TOTAL ISSUE COUNT:\s*(\d+)", message)
+    #     return match.group(1) if match else "Unknown"
 
-    # After running both:
-    # print(f"Generalist found: {get_count(gen_final['messages'][-1].content)}")
-    print(f"Stem Agent found: {get_count(stem_final['messages'][-1].content)}")
+    # # After running both:
+    # print(f"Generalist Agent found: {get_count(gen_final['messages'][-1].content)}")
+    # print(f"Stem Agent found: {get_count(stem_final['messages'][-1].content)}")
 
 
 if __name__ == "__main__":

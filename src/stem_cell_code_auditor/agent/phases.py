@@ -49,7 +49,7 @@ def sensing_phase(state: StemState):
             reason = re.search(r"REASONING:\s*(.*)", content, re.I | re.S).group(1).strip()
             print(f"✅ [PARSED SPECIALIZATION]: {spec}")
             print(f"🛠️ [PARSED TECH STACK]: {stack}")
-            print(f"💡 [RATIONALE]: {reason[:100]}...")  # Print first 100 chars of reasoning
+            print(f"💡 [RATIONALE]: {reason[:300]}...")  # Print first 100 chars of reasoning
 
             return {"specialization": spec, "tech_stack": stack, "reasoning": reason, "messages": [response]}
         except Exception as e:
@@ -64,9 +64,7 @@ def evolution_phase(state: StemState):
     llm = ChatOpenAI(model="gpt-4o")
 
     # Check if the agent already tried to install something
-    has_installed_tools = any(
-        "Successfully evolved" in m.content for m in state["messages"] if hasattr(m, "content")
-    )
+    has_installed_tools = len(DEVELOPED_TOOLS) > 0
 
     if has_installed_tools:
         print("📝 Status: At least one tool installed. Agent is deciding if more are needed...")
@@ -97,9 +95,8 @@ def evolution_phase(state: StemState):
         1. PREFER API: Most tools (nikto, bandit, lynis, nmap) are available via 'apt-get install -y'
         2. PREFER PIP: Use 'pip install' for python-specific tools like 'semgrep'
         3. AVOID CPAN: Avoid using cpan, it is slow and unstable in Docker.
-        4. COMBINE: Install all related tools in ONE call to avoid lock errors.
-        Example: 'apt-get update && apt-get install -y nikto bandit lynis'
-        Remember that the tools mentioned in the prompt are examples, and what you should install should be based solely on your specialization.
+        4. GRANULATE: Install all related tools in separate calls. When installing more than one tools, wait for the previous installation to finish before proceeding to avoid lock errors.
+        Example: 'apt-get update && apt-get install -y nikto', then: 'apt-get install -y bandit'
         5. Do not install 'helper' tools like curl or wget as standalone tools. If you need them, use them inside a single setup_command.
         If you have already tried a command and it failed, DO NOT repeat it.
         Try a different package manager or move on with the tools you have.
@@ -108,6 +105,8 @@ def evolution_phase(state: StemState):
         - If JavaScript: use 'eslint' or 'njsscan'
         - If Python: Use 'bandit' or 'safety'
         etc.
+        
+        Remember that the tools mentioned in the prompt are examples, and what you should install should be based solely on your specialization.
         """
 
     print(f"\n{'='*20} EVOLUTION PHASE: {state['specialization']} {'='*20}")

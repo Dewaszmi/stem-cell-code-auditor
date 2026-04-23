@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 
 from langchain_core.tools import tool
 
@@ -64,19 +65,38 @@ def install_and_develop_tool(setup_command: str, tool_name: str, execution_comma
         execution_command: The command to run the tool, using '{path}' as the target placeholder.
                            Example: 'cppcheck {path}' or 'grep -r "TODO" {path}'
     """
+
+    def wait_for_apt():
+        for i in range(10):  # Try for 30 seconds
+            # Check if any apt/dpkg processes are running
+            result = subprocess.run("pgrep -f 'apt|dpkg'", shell=True, capture_output=True)
+            if result.returncode != 0:  # No processes found
+                # Force remove lingering lock files just in case
+                subprocess.run(
+                    "rm -f /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock",
+                    shell=True,
+                )
+                subprocess.run("dpkg --configure -a", shell=True, capture_output=True)
+                return True
+            print(f"⏳ [LOCK]: Apt is busy, waiting 3s (Attempt {i+1}/10)...")
+            time.sleep(3)
+        return False
+
     try:
+        if "apt" in setup_command:
+            if not wait_for_apt():
+                return f"Evolution Error: System package manager is permanently locked."
+
         env = os.environ.copy()
         env["DEBIAN_FRONTEND"] = "noninteractive"
         env["PERL_MM_USE_DEFAULT"] = "1"
-        cleanup = "rm -f /var/lib/dpkg/lock* /var/lib/apt/lists/lock /var/cache/apt/archives/lock"
 
-        full_command = f"{cleanup} && {setup_command}"
-        print(f"\n[RUNNING COMMAND]: {full_command}")
+        print(f"\n[RUNNING COMMAND]: {setup_command}")
 
         # Execute setup (apt-get, pip, curl, etc.)
         # Using shell=True allows pipes and complex install strings
         process = subprocess.run(
-            full_command,
+            setup_command,
             shell=True,
             capture_output=True,
             text=True,
@@ -84,8 +104,8 @@ def install_and_develop_tool(setup_command: str, tool_name: str, execution_comma
             timeout=300,  # 5 minute limit per installation
         )
 
-        if process.stdout:
-            print(f"[STDOUT]:\n{process.stdout}")
+        # if process.stdout:
+        #     print(f"[STDOUT]:\n{process.stdout}")
         if process.stderr:
             print(f"[STDERR]:\n{process.stderr}")
 
@@ -103,6 +123,8 @@ def install_and_develop_tool(setup_command: str, tool_name: str, execution_comma
             output = result.stdout if result.returncode == 0 else result.stderr
             return output if output else "Tool executed successfully but returned no output."
 
+        clean_name = tool_name.lower().replace("-", "_").replace(" ", "_")
+        dynamic_tool.__name__ = f"{clean_name}_tool"
         dynamic_tool.__doc__ = f"Specialized tool '{tool_name}' installed. Command: {execution_command}"
         DEVELOPED_TOOLS[tool_name] = dynamic_tool
 
